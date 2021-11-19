@@ -2,7 +2,7 @@ import '../src/setup.js';
 import supertest from 'supertest';
 import faker from 'faker';
 import app from '../src/app.js';
-import { createUser } from './factories/userFactory.js';
+import { createUser, createSession } from './factories/userFactory.js';
 import connection from '../src/database/database.js';
 
 const agent = supertest(app);
@@ -131,6 +131,53 @@ describe('POST /login', () => {
         const result = await agent
             .post('/login')
             .send(body);
+        const { status } = result;
+
+        expect(status).toEqual(200);
+    });
+});
+
+describe('GET /plan', () => {
+    let session = {};
+
+    beforeAll(async () => {
+        session = await createSession();
+    });
+
+    afterAll(async () => {
+        await connection.query('DELETE FROM sessions;');
+        await connection.query('DELETE FROM users;');
+    });
+
+    it('return 401 if don\'t recieve a token', async () => {
+        const result = await agent
+            .get('/plan');
+        const { status } = result;
+
+        expect(status).toEqual(401);
+    });
+
+    it('return 401 for an invalid session', async () => {
+        const header = {
+            token: faker.datatype.uuid(),
+        };
+
+        const result = await agent
+            .get('/plan')
+            .set('authorization', header.token);
+        const { status } = result;
+
+        expect(status).toEqual(401);
+    });
+
+    it('return 200 for a valid token', async () => {
+        const header = {
+            token: session.token,
+        };
+
+        const result = await agent
+            .get('/plan')
+            .set('authorization', header.token);
         const { status } = result;
 
         expect(status).toEqual(200);
